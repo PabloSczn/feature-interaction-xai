@@ -1,0 +1,5 @@
+# Environment
+venv/
+
+# Data files
+data/
