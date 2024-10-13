@@ -3,3 +3,6 @@ venv/
 
 # Data files
 data/
+
+# Trained models
+models/
