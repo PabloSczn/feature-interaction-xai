@@ -10,6 +10,8 @@ Friedman #1 Dataset: A synthetic dataset that has non-linear interactions betwee
         y(X) = 10 * sin(pi * X_1 * X_2 + 20 * (X_3 - 0.5) ** 2 + 10 * X_4 + 5 * X_5 + noise * N(0, 1).
 
   - This function contains a clear interaction between `x_1` and `x_2`, which can be useful for benchmarking how well each method captures this known interaction.
+
+    Link: https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_friedman1.html  
 '''
 
 # Create data directory if it doesn't exist
