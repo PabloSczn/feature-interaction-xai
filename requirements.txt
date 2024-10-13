@@ -1,3 +1,4 @@
 # Explainability Libraries
 alibi==0.9.6
 xgboost==2.1.1
+pyALE==1.2.0
