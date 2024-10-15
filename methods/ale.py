@@ -114,7 +114,7 @@ def generate_ale_explanations(model, model_name, X_train, save_dir):
 
             # Saving the plot with bbox_inches='tight' to ensure all elements are within the figure
             plot_path = os.path.join(save_dir, f'ale_1d_{feature}.png')
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            plt.savefig(plot_path, dpi=700, bbox_inches='tight')
             plt.close()
             logger.debug(f"1D ALE plot saved: {plot_path}")
         except Exception as e:
@@ -144,7 +144,7 @@ def generate_ale_explanations(model, model_name, X_train, save_dir):
 
             # Saving the plot with bbox_inches='tight' to ensure all elements are within the figure
             plot_path = os.path.join(save_dir, f'ale_2d_{feature1}_{feature2}.png')
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            plt.savefig(plot_path, dpi=700, bbox_inches='tight')
             plt.close()
             logger.debug(f"2D ALE plot saved: {plot_path}")
         except Exception as e:
