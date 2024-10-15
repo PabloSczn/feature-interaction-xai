@@ -92,39 +92,59 @@ def generate_ale_explanations(model, model_name, X_train, save_dir):
     """
     logger.info(f"Generating ALE explanations for {model_name}...")
 
-    # 1D ALE: Analyze individual feature effects
+    # 1D ALE: Analyse individual feature effects
     for feature in X_train.columns:
         logger.debug(f"Generating 1D ALE for feature: {feature}")
         try:
             ale_eff = ale(X=X_train, model=model, feature=[feature], grid_size=50, include_CI=True)
-            plt.figure(figsize=(8, 6))
+            plt.figure(figsize=(8, 6), constrained_layout=True)
             ale_eff.plot()
-            plt.title(f"1D ALE for {feature} ({model_name.upper()})", fontsize=14)
-            plt.xlabel(feature, fontsize=12)
-            plt.ylabel('Accumulated Local Effect', fontsize=12)
-            plt.tight_layout(pad=2.0)
+
+            # Access current Axes
+            ax = plt.gca()
+
+            # Customise title and labels
+            ax.set_title(f"1D ALE for {feature} ({model_name.upper()})", fontsize=14)
+            ax.set_xlabel(feature, fontsize=12)
+            ax.set_ylabel('Accumulated Local Effect', fontsize=12)
+
+            # Adjust legend
+            if ax.get_legend():
+                ax.legend(fontsize=10, loc='upper right')
+
+            # Saving the plot with bbox_inches='tight' to ensure all elements are within the figure
             plot_path = os.path.join(save_dir, f'ale_1d_{feature}.png')
-            plt.savefig(plot_path, dpi=300)
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
             plt.close()
             logger.debug(f"1D ALE plot saved: {plot_path}")
         except Exception as e:
             logger.warning(f"Skipped 1D ALE for {feature}: {e}")
 
-    # 2D ALE: Analyze interactions between feature pairs
+    # 2D ALE: Analyse interactions between feature pairs
     logger.debug(f"Generating 2D ALE plots for {model_name}...")
     feature_pairs = combinations(X_train.columns, 2)
     for feature1, feature2 in feature_pairs:
         logger.debug(f"Generating 2D ALE for features: {feature1}, {feature2}")
         try:
             ale_eff = ale(X=X_train, model=model, feature=[feature1, feature2], grid_size=50, include_CI=True)
-            plt.figure(figsize=(10, 8))
+            plt.figure(figsize=(10, 8), constrained_layout=True)
             ale_eff.plot()
-            plt.title(f"2D ALE for {feature1} & {feature2} ({model_name.upper()})", fontsize=14)
-            plt.xlabel(feature2, fontsize=12)
-            plt.ylabel(feature1, fontsize=12)
-            plt.tight_layout(pad=3.0)
+
+            # Access current Axes
+            ax = plt.gca()
+
+            # Customise title and labels
+            ax.set_title(f"2D ALE for {feature1} & {feature2} ({model_name.upper()})", fontsize=14)
+            ax.set_xlabel(feature2, fontsize=12)
+            ax.set_ylabel(feature1, fontsize=12)
+
+            # Adjust legend
+            if ax.get_legend():
+                ax.legend(fontsize=10, loc='upper right')
+
+            # Saving the plot with bbox_inches='tight' to ensure all elements are within the figure
             plot_path = os.path.join(save_dir, f'ale_2d_{feature1}_{feature2}.png')
-            plt.savefig(plot_path, dpi=300)
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
             plt.close()
             logger.debug(f"2D ALE plot saved: {plot_path}")
         except Exception as e:
@@ -137,7 +157,7 @@ def main():
 
     Explanations:
     - 1D ALE plot: Shows the effect of each feature on the model’s predictions, independent of other features.
-    - 2D ALE plot: Visualizes interactions between two features and how their joint effects contribute to the model’s decision-making.
+    - 2D ALE plot: Visualises interactions between two features and how their joint effects contribute to the model’s decision-making.
 
     These explanations help compare the feature importance and interaction effects across models.
 
@@ -173,6 +193,7 @@ def main():
     except Exception as e:
         logger.critical(f"Script terminated due to an unexpected error: {e}")
         exit(1)
+
 
 if __name__ == "__main__":
     main()
