@@ -19,9 +19,13 @@ for model_name in MODEL_NAMES:
 # Specify the dataset name
 DATASET_NAME = 'friedman1'
 
+
 def load_data_and_models():
     """
     Load the dataset and pre-trained models.
+
+    Returns:
+        tuple: A tuple containing the training features DataFrame and a dictionary of models.
     """
     # Load the dataset
     X_train = pd.read_csv('./data/friedman_X_train.csv')
@@ -33,9 +37,20 @@ def load_data_and_models():
 
     return X_train, models
 
+
 def compute_H_statistic_pairwise(model, X, feature_j, feature_k, sample_size=500):
     """
     Compute the pairwise H-statistic for two features.
+
+    Args:
+        model: The trained model.
+        X (pd.DataFrame): Feature dataset.
+        feature_j (str): Name of the first feature.
+        feature_k (str): Name of the second feature.
+        sample_size (int, optional): Number of samples to use. Defaults to 500.
+
+    Returns:
+        float: The computed H2jk statistic.
     """
     # Sample data points to reduce computation
     X_sample = X.sample(n=sample_size, random_state=42).reset_index(drop=True)
@@ -69,7 +84,7 @@ def compute_H_statistic_pairwise(model, X, feature_j, feature_k, sample_size=500
         preds_k = model.predict(X_k)
         PDk[i] = preds_k.mean()
 
-    # --- Center the partial dependence functions ---
+    # Center the partial dependence functions
     PDjk_centered = PDjk - PDjk.mean()
     PDj_centered = PDj - PDj.mean()
     PDk_centered = PDk - PDk.mean()
@@ -81,9 +96,19 @@ def compute_H_statistic_pairwise(model, X, feature_j, feature_k, sample_size=500
 
     return H2jk
 
+
 def compute_H_statistic_total(model, X, feature_j, sample_size=500):
     """
     Compute the total H-statistic for a single feature interacting with all others.
+
+    Args:
+        model: The trained model.
+        X (pd.DataFrame): Feature dataset.
+        feature_j (str): Name of the feature.
+        sample_size (int, optional): Number of samples to use. Defaults to 500.
+
+    Returns:
+        float: The computed H2j statistic.
     """
     # Sample data points to reduce computation
     X_sample = X.sample(n=sample_size, random_state=42).reset_index(drop=True)
@@ -111,7 +136,7 @@ def compute_H_statistic_total(model, X, feature_j, sample_size=500):
         preds_minus_j = model.predict(X_minus_j)
         PD_minus_j[i] = preds_minus_j.mean()
 
-    # --- Center the functions ---
+    # Center the functions
     f_x_centered = f_x - f_x.mean()
     PDj_centered = PDj - PDj.mean()
     PD_minus_j_centered = PD_minus_j - PD_minus_j.mean()
@@ -123,9 +148,14 @@ def compute_H_statistic_total(model, X, feature_j, sample_size=500):
 
     return H2j
 
+
 def main():
     """
     Main function to compute and save H-statistics for all models.
+    
+    Explanations:
+    - Pairwise H-statistics for all feature combinations.
+    - Total H-statistics for each relevant feature.
     """
     # Load data and models
     X_train, models = load_data_and_models()
@@ -178,6 +208,7 @@ def main():
         print("\nH-statistic computation completed.")
         print("Pairwise H-statistics indicate the strength of interaction between relevant feature pairs.")
         print("Total H-statistics indicate the overall interaction strength of each relevant feature with all others.")
+
 
 if __name__ == "__main__":
     main()
