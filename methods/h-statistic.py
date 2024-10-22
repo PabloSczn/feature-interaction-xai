@@ -16,6 +16,9 @@ MODEL_NAMES = ['xgb', 'rf']
 for model_name in MODEL_NAMES:
     os.makedirs(os.path.join(EXPLANATIONS_DIR, model_name), exist_ok=True)
 
+# Specify the dataset name
+DATASET_NAME = 'friedman1'
+
 def load_data_and_models():
     """
     Load the dataset and pre-trained models.
@@ -30,19 +33,7 @@ def load_data_and_models():
 
     return X_train, models
 
-def compute_partial_dependence(model, X, features, grid_resolution=20):
-    """
-    Compute partial dependence for specified features.
-    """
-    # Use sklearn's partial_dependence function
-    # Convert feature names to indices if necessary
-    if isinstance(features[0], str):
-        features = [X.columns.get_loc(f) for f in features]
-
-    pd_results = partial_dependence(model, X, features, grid_resolution=grid_resolution, kind='average')
-    return pd_results
-
-def compute_H_statistic_pairwise(model, X, feature_j, feature_k, sample_size=100):
+def compute_H_statistic_pairwise(model, X, feature_j, feature_k, sample_size=500):
     """
     Compute the pairwise H-statistic for two features.
     """
@@ -56,7 +47,7 @@ def compute_H_statistic_pairwise(model, X, feature_j, feature_k, sample_size=100
     PDk = np.zeros(n)
 
     # Iterate over each sampled data point
-    for i in tqdm(range(n), desc=f"Computing PD for pair ({feature_j}, {feature_k})"):
+    for i in tqdm(range(n), desc=f"Computing H-statistic for pair ({feature_j}, {feature_k})"):
         x_i = X_sample.iloc[i]
 
         # Create a copy of X and set feature_j and feature_k to x_i's values
@@ -104,7 +95,7 @@ def compute_H_statistic_total(model, X, feature_j, sample_size=500):
     PD_minus_j = np.zeros(n)
 
     # Iterate over each sampled data point
-    for i in tqdm(range(n), desc=f"Computing PD for feature {feature_j}"):
+    for i in tqdm(range(n), desc=f"Computing H-statistic for feature {feature_j}"):
         x_i = X_sample.iloc[i]
 
         # Partial dependence for feature_j
@@ -139,8 +130,12 @@ def main():
     # Load data and models
     X_train, models = load_data_and_models()
 
-    # List of features
-    features = X_train.columns.tolist()
+    # Identify relevant features based on the dataset
+    if DATASET_NAME == 'friedman1':
+        # Exclude noise features for Friedman 1 dataset
+        relevant_features = X_train.columns[:5].tolist()
+    else:
+        relevant_features = X_train.columns.tolist()
 
     for model_name in MODEL_NAMES:
         print(f"\nProcessing model: {model_name.upper()}")
@@ -150,30 +145,30 @@ def main():
         pairwise_H = {}
         total_H = {}
 
-        # Compute pairwise H-statistics for all feature combinations
+        # Compute pairwise H-statistics for all relevant feature combinations
         print("\nComputing pairwise H-statistics...")
-        feature_pairs = list(combinations(features, 2))
+        feature_pairs = list(combinations(relevant_features, 2))
         for (feature_j, feature_k) in tqdm(feature_pairs, desc="Pairwise H-statistics"):
-            H2jk = compute_H_statistic_pairwise(model, X_train, feature_j, feature_k, sample_size=100)
-            pairwise_H[(feature_j, feature_k)] = H2jk
+            H2jk = compute_H_statistic_pairwise(model, X_train, feature_j, feature_k, sample_size=500)
+            pairwise_H[(feature_j, feature_k)] = H2jk * 100  # Scale to percentage
 
         # Convert pairwise H to DataFrame and save
         pairwise_H_df = pd.DataFrame([
-            {'Feature 1': pair[0], 'Feature 2': pair[1], 'H2jk': value}
+            {'Feature 1': pair[0], 'Feature 2': pair[1], 'H2jk (%)': f"{value:.2f}"}
             for pair, value in pairwise_H.items()
         ])
         pairwise_H_df.to_csv(os.path.join(EXPLANATIONS_DIR, model_name, 'pairwise_H_statistic.csv'), index=False)
         print(f"Pairwise H-statistics saved to {os.path.join(EXPLANATIONS_DIR, model_name, 'pairwise_H_statistic.csv')}")
 
-        # Compute total H-statistics for each feature
+        # Compute total H-statistics for each relevant feature
         print("\nComputing total H-statistics...")
-        for feature_j in tqdm(features, desc="Total H-statistics"):
-            H2j = compute_H_statistic_total(model, X_train, feature_j, sample_size=100)
-            total_H[feature_j] = H2j
+        for feature_j in tqdm(relevant_features, desc="Total H-statistics"):
+            H2j = compute_H_statistic_total(model, X_train, feature_j, sample_size=500)
+            total_H[feature_j] = H2j * 100  # Scale to percentage
 
         # Convert total H to DataFrame and save
         total_H_df = pd.DataFrame([
-            {'Feature': feature, 'H2j': value}
+            {'Feature': feature, 'H2j (%)': f"{value:.2f}"}
             for feature, value in total_H.items()
         ])
         total_H_df.to_csv(os.path.join(EXPLANATIONS_DIR, model_name, 'total_H_statistic.csv'), index=False)
@@ -181,8 +176,8 @@ def main():
 
         # Summary of results
         print("\nH-statistic computation completed.")
-        print("Pairwise H-statistics indicate the strength of interaction between feature pairs.")
-        print("Total H-statistics indicate the overall interaction strength of each feature with all others.")
+        print("Pairwise H-statistics indicate the strength of interaction between relevant feature pairs.")
+        print("Total H-statistics indicate the overall interaction strength of each relevant feature with all others.")
 
 if __name__ == "__main__":
     main()
