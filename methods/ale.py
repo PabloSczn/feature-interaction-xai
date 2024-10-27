@@ -7,6 +7,8 @@ import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 from PyALE import ale
+import numpy as np
+import seaborn as sns
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +31,7 @@ EXPLANATIONS_DIR = './explanations/ale'
 MODEL_NAMES = ['xgb', 'rf']
 GRID_SIZE = 50
 DPI = 700
+RELEVANT_FEATURES = ['feature_0', 'feature_1', 'feature_2', 'feature_3', 'feature_4']  # First 5 features
 
 def create_directories(base_dir, model_names):
     """
@@ -116,11 +119,17 @@ def generate_ale_explanations(model, model_name, X_train, save_dir, grid_size=GR
     """
     logger.info(f"Generating ALE explanations for model: {model_name.upper()}")
 
-    # Generate 1D ALE plots
-    for feature in X_train.columns:
+    # Initialize list to store interaction metrics
+    interaction_metrics = []
+
+    # Generate 1D ALE plots for relevant features
+    for feature in RELEVANT_FEATURES:
         logger.debug(f"Generating 1D ALE for feature: {feature}")
         try:
+            # Compute 1D ALE
             ale_eff = ale(X=X_train, model=model, feature=[feature], grid_size=grid_size, include_CI=True)
+            
+            # Plot 1D ALE
             plt.figure(figsize=(8, 6), constrained_layout=True)
             ale_eff.plot()
 
@@ -136,40 +145,77 @@ def generate_ale_explanations(model, model_name, X_train, save_dir, grid_size=GR
             plt.savefig(plot_path, dpi=dpi, bbox_inches='tight')
             plt.close()
             logger.debug(f"1D ALE plot saved: {plot_path}")
+
+            # Compute interaction strength for 1D ALE (range of effect)
+            if 'eff' in ale_eff.columns:
+                ale_values = ale_eff['eff'].values
+                interaction_strength = np.ptp(ale_values)
+                interaction_metrics.append({
+                    'Feature 1': feature,
+                    'Feature 2': 'All',
+                    'ALE Interaction Strength': interaction_strength
+                })
+                logger.debug(f"ALE Interaction Strength for {feature}: {interaction_strength:.4f}")
+            else:
+                logger.warning(f"'eff' column not found in 1D ALE for feature {feature}")
+
         except Exception as e:
             logger.warning(f"Skipped 1D ALE for feature '{feature}': {e}")
 
-    # Generate 2D ALE plots
-    logger.info("Generating 2D ALE plots...")
-    feature_pairs = combinations(X_train.columns, 2)
+    # Generate 2D ALE plots for relevant feature pairs and compute interaction metrics
+    logger.info("Generating 2D ALE plots and computing interaction metrics...")
+    feature_pairs = list(combinations(RELEVANT_FEATURES, 2))
+
     for feature1, feature2 in feature_pairs:
         logger.debug(f"Generating 2D ALE for features: {feature1}, {feature2}")
         try:
+            # Compute 2D ALE
             ale_eff = ale(X=X_train, model=model, feature=[feature1, feature2], grid_size=grid_size, include_CI=True)
-            plt.figure(figsize=(10, 8), constrained_layout=True)
-            ale_eff.plot()
+            
+            # Check if ale_eff is a DataFrame
+            if isinstance(ale_eff, pd.DataFrame):
+                plt.figure(figsize=(10, 8), constrained_layout=True)
 
-            ax = plt.gca()
-            ax.set_title(f"2D ALE for {feature1} & {feature2} ({model_name.upper()})", fontsize=14)
-            ax.set_xlabel(feature2, fontsize=12)
-            ax.set_ylabel(feature1, fontsize=12)
+                # Use heatmap to plot 2D ALE
+                sns.heatmap(ale_eff, cmap='viridis')
+                ax = plt.gca()
+                ax.set_title(f"2D ALE for {feature1} & {feature2} ({model_name.upper()})", fontsize=14)
+                ax.set_xlabel(feature2, fontsize=12)
+                ax.set_ylabel(feature1, fontsize=12)
 
-            if ax.get_legend():
-                ax.legend(fontsize=10, loc='upper right')
+                # Overlay KDE plot for data distribution
+                try:
+                    sns.kdeplot(x=X_train[feature2], y=X_train[feature1], levels=5, linewidths=1, colors='white', alpha=0.5, ax=ax)
+                except Exception as e:
+                    logger.warning(f"Could not overlay KDE plot: {e}")
 
-            plot_path = os.path.join(save_dir, f'ale_2d_{feature1}_{feature2}.png')
-            plt.savefig(plot_path, dpi=dpi, bbox_inches='tight')
-            plt.close()
-            logger.debug(f"2D ALE plot saved: {plot_path}")
+                plot_path = os.path.join(save_dir, f'ale_2d_{feature1}_{feature2}.png')
+                plt.savefig(plot_path, dpi=dpi, bbox_inches='tight')
+                plt.close()
+                logger.debug(f"2D ALE plot saved: {plot_path}")
+
+                # Compute interaction strength based on the range of ALE effects
+                ale_values = ale_eff.values.flatten()
+                interaction_strength = np.ptp(ale_values)
+                interaction_metrics.append({
+                    'Feature 1': feature1,
+                    'Feature 2': feature2,
+                    'ALE Interaction Strength': interaction_strength
+                })
+                logger.debug(f"ALE Interaction Strength for ({feature1}, {feature2}): {interaction_strength:.4f}")
+            else:
+                logger.warning(f"Unexpected type for 2D ALE effect: {type(ale_eff)}. Skipping.")
         except Exception as e:
             logger.warning(f"Skipped 2D ALE for features '{feature1}' and '{feature2}': {e}")
 
-def save_ale_explanations():
-    """
-    Placeholder for any future saving mechanisms if needed.
-    Currently, plots are saved directly within the generate_ale_explanations function.
-    """
-    pass  # Currently handled within generate_ale_explanations
+    # Save interaction metrics
+    if interaction_metrics:
+        interaction_metrics_df = pd.DataFrame(interaction_metrics)
+        interaction_metrics_path = os.path.join(save_dir, 'ale_interaction_metrics.csv')
+        interaction_metrics_df.to_csv(interaction_metrics_path, index=False)
+        logger.info(f"ALE Interaction Metrics saved to {interaction_metrics_path}")
+    else:
+        logger.warning("No ALE interaction metrics were computed.")
 
 def compute_and_save_ale_explanations(model, model_name, X_train, save_dir):
     """
@@ -191,7 +237,8 @@ def main():
     Explanations:
     - 1D ALE Plot: Shows the effect of each feature on the model’s predictions, independent of other features.
     - 2D ALE Plot: Visualizes interactions between two features and how their joint effects contribute to the model’s decision-making.
-    
+    - ALE Interaction Metrics: Numerical values representing the strength of interactions between feature pairs.
+
     These explanations help compare feature importance and interaction effects across models.
     """
     try:
