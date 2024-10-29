@@ -119,7 +119,7 @@ def generate_ale_explanations(model, model_name, X_train, save_dir, grid_size=GR
     """
     logger.info(f"Generating ALE explanations for model: {model_name.upper()}")
 
-    # Initialize list to store interaction metrics
+    # Initialise list to store interaction metrics
     interaction_metrics = []
 
     # Generate 1D ALE plots for relevant features
@@ -236,7 +236,7 @@ def main():
 
     Explanations:
     - 1D ALE Plot: Shows the effect of each feature on the model’s predictions, independent of other features.
-    - 2D ALE Plot: Visualizes interactions between two features and how their joint effects contribute to the model’s decision-making.
+    - 2D ALE Plot: Visualises interactions between two features and how their joint effects contribute to the model’s decision-making.
     - ALE Interaction Metrics: Numerical values representing the strength of interactions between feature pairs.
 
     These explanations help compare feature importance and interaction effects across models.

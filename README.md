@@ -3,14 +3,14 @@
 ## Project Overview 
 
 This project aims to compare different Explainable AI (XAI) methods to assess how well they capture and explain **feature interactions** in machine learning models. The goal is to better understand the influence of individual features and their interactions in model decision-making.
-The project implements the **Accumulated Local Effects (ALE)** method, with plans to include other methods such as **RuleFit** and **H-statistic** in the future.
+The project implements the **Accumulated Local Effects (ALE)**, **H-statistic** and **SHAP interaction** methods, with plans to include other methods such as **RuleFit** in the future.
 
 ### 🚧 Please note this project is on progress 🚧
 
 Currently, the project includes:
-- **Friedman #1** dataset generation for non-linear feature interaction simulation.
+- **Friedman #1** dataset generation for non-linear feature interaction simulation, with plans to implement the integration of another dataset that reflects a real-life scenario.
 - Training of two machine learning models: **XGBoost** and **Random Forest**.
-- Generation of **ALE plots** for both individual feature effects (1D ALE) and feature interactions (2D ALE).
+- Generation of explanations for the different methods
 
 ## Setup and Installation
 
@@ -45,13 +45,15 @@ Currently, the project includes:
    python train-models.py
 ```
 
-3. **Generate ALE explanations**:
-   Generate **ALE plots** for individual features and feature interactions:
+3. **Generate explanations**:
+   Generate the explanations for the different methods:
 ```bash
    python methods/ale.py
+   python methods/h-statistic.py
+   python methods/shap-interaction.py
 ```
 
-The generated explanations will be saved for later comparison.
+The generated explanations will be saved for later comparison in `explanations/`.
 
 ## Author
 **Pablo Sanchez Narro**  
