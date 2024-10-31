@@ -31,7 +31,6 @@ EXPLANATIONS_DIR = './explanations/ale'
 MODEL_NAMES = ['xgb', 'rf']
 GRID_SIZE = 50
 DPI = 700
-# RELEVANT_FEATURES will be set dynamically based on the dataset
 
 def create_directories(base_dir, model_names):
     """
@@ -51,8 +50,7 @@ def create_directories(base_dir, model_names):
             subdirs = {
                 '1D_ALE': os.path.join(model_dir, '1D_ALE'),
                 '2D_ALE': os.path.join(model_dir, '2D_ALE'),
-                'Interaction_Metrics': os.path.join(model_dir, 'Interaction_Metrics'),
-                'Additional_Plots': os.path.join(model_dir, 'Additional_Plots')
+                'Interaction_Metrics': os.path.join(model_dir, 'Interaction_Metrics')
             }
             for subdir in subdirs.values():
                 os.makedirs(subdir, exist_ok=True)
@@ -112,6 +110,31 @@ def load_models(model_paths):
         logger.error(f"Failed to load models: {e}")
         raise
 
+def format_axis_ticks(ax, feature, grid_size):
+    """
+    Format the axis ticks for better readability.
+
+    Args:
+        ax (matplotlib.axes.Axes): The axes to format.
+        feature (str): The feature name.
+        grid_size (int): Number of grid points used in ALE.
+
+    Returns:
+        None
+    """
+    try:
+        # Get current tick positions
+        ticks = ax.get_xticks()
+
+        tick_labels = [f"{tick:.2f}" for tick in ticks]
+        ax.set_xticklabels(tick_labels, rotation=45, ha='right')
+        
+        ticks = ax.get_yticks()
+        tick_labels = [f"{tick:.2f}" for tick in ticks]
+        ax.set_yticklabels(tick_labels, rotation=0)
+    except Exception as e:
+        logger.warning(f"Failed to format axis ticks for feature '{feature}': {e}")
+
 def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
     """
     Generate and save an interaction strength heatmap based on ALE interaction metrics.
@@ -129,9 +152,13 @@ def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
         interaction_metrics_df_filtered = interaction_metrics_df_filtered[
             interaction_metrics_df_filtered['Feature 1'] != interaction_metrics_df_filtered['Feature 2']
         ]
+        if interaction_metrics_df_filtered.empty:
+            logger.warning("No 2D interaction metrics available to generate heatmap.")
+            return
+
         # Pivot the DataFrame to create a matrix
         pivot_df = interaction_metrics_df_filtered.pivot(index='Feature 1', columns='Feature 2', values='ALE Interaction Strength')
-        # Sort the features for better visualization
+        # Sort the features for better visualisation
         pivot_df = pivot_df.sort_index().sort_index(axis=1)
         # Create a symmetric matrix by combining with its transpose
         pivot_df = pivot_df.combine_first(pivot_df.T)
@@ -149,6 +176,63 @@ def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
     except Exception as e:
         logger.error(f"Failed to generate interaction heatmap: {e}")
         raise
+
+def split_interaction_metrics(interaction_metrics_df, save_dir):
+    """
+    Split interaction metrics into 1D and 2D CSV files.
+
+    Args:
+        interaction_metrics_df (pd.DataFrame): DataFrame containing interaction metrics.
+        save_dir (str): Directory to save the split CSV files.
+
+    Returns:
+        None
+    """
+    try:
+        # 1D ALE interactions where Feature 2 is 'All'
+        interaction_metrics_1D = interaction_metrics_df[interaction_metrics_df['Feature 2'] == 'All']
+        if not interaction_metrics_1D.empty:
+            interaction_metrics_1D_path = os.path.join(save_dir, 'ale_interaction_metrics_1D.csv')
+            interaction_metrics_1D.to_csv(interaction_metrics_1D_path, index=False)
+            logger.info(f"ALE Interaction Metrics (1D) saved to {interaction_metrics_1D_path}")
+        else:
+            logger.warning("No 1D ALE interaction metrics to save.")
+
+        # 2D ALE interactions where Feature 2 is not 'All'
+        interaction_metrics_2D = interaction_metrics_df[interaction_metrics_df['Feature 2'] != 'All']
+        if not interaction_metrics_2D.empty:
+            interaction_metrics_2D_path = os.path.join(save_dir, 'ale_interaction_metrics_2D.csv')
+            interaction_metrics_2D.to_csv(interaction_metrics_2D_path, index=False)
+            logger.info(f"ALE Interaction Metrics (2D) saved to {interaction_metrics_2D_path}")
+        else:
+            logger.warning("No 2D ALE interaction metrics to save.")
+    except Exception as e:
+        logger.error(f"Failed to split interaction metrics: {e}")
+        raise
+
+def format_2d_ale_plot(ax, feature1, feature2):
+    """
+    Format the 2D ALE plot axes for better readability.
+
+    Args:
+        ax (matplotlib.axes.Axes): The axes to format.
+        feature1 (str): Name of the first feature.
+        feature2 (str): Name of the second feature.
+
+    Returns:
+        None
+    """
+    try:
+        # Round the tick labels to 2 decimal places
+        ticks = ax.get_xticks()
+        tick_labels = [f"{tick:.2f}" for tick in ticks]
+        ax.set_xticklabels(tick_labels, rotation=45, ha='right')
+
+        ticks = ax.get_yticks()
+        tick_labels = [f"{tick:.2f}" for tick in ticks]
+        ax.set_yticklabels(tick_labels, rotation=0)
+    except Exception as e:
+        logger.warning(f"Failed to format 2D ALE plot axes for features '{feature1}' and '{feature2}': {e}")
 
 def generate_ale_explanations(model, model_name, X_train, save_dirs, grid_size=GRID_SIZE, dpi=DPI):
     """
@@ -236,6 +320,9 @@ def generate_ale_explanations(model, model_name, X_train, save_dirs, grid_size=G
                 except Exception as e:
                     logger.warning(f"Could not overlay KDE plot: {e}")
 
+                # Format axis ticks for better readability
+                format_2d_ale_plot(ax, feature1, feature2)
+
                 plot_path = os.path.join(save_dirs['2D_ALE'], f'ale_2d_{feature1}_{feature2}.png')
                 plt.savefig(plot_path, dpi=dpi, bbox_inches='tight')
                 plt.close()
@@ -258,13 +345,15 @@ def generate_ale_explanations(model, model_name, X_train, save_dirs, grid_size=G
     # Save interaction metrics
     if interaction_metrics:
         interaction_metrics_df = pd.DataFrame(interaction_metrics)
-        interaction_metrics_path = os.path.join(save_dirs['Interaction_Metrics'], 'ale_interaction_metrics.csv')
-        interaction_metrics_df.to_csv(interaction_metrics_path, index=False)
-        logger.info(f"ALE Interaction Metrics saved to {interaction_metrics_path}")
+        # Split interaction metrics into 1D and 2D
+        split_interaction_metrics(interaction_metrics_df, save_dirs['Interaction_Metrics'])
 
-        # Generate interaction heatmap based on interaction metrics
-        generate_interaction_heatmap(interaction_metrics_df, save_dirs['Interaction_Metrics'], model_name)
-
+        # Generate interaction heatmap based on 2D interaction metrics
+        interaction_metrics_2D = interaction_metrics_df[interaction_metrics_df['Feature 2'] != 'All']
+        if not interaction_metrics_2D.empty:
+            generate_interaction_heatmap(interaction_metrics_2D, save_dirs['Interaction_Metrics'], model_name)
+        else:
+            logger.warning("No 2D ALE interaction metrics available to generate heatmap.")
     else:
         logger.warning("No ALE interaction metrics were computed.")
 
@@ -288,11 +377,10 @@ def main():
 
     Explanations:
     - 1D ALE Plot: Shows the effect of each feature on the model’s predictions, independent of other features.
-    - 2D ALE Plot: Visualizes interactions between two features and how their joint effects contribute to the model’s decision-making.
+    - 2D ALE Plot: Visualises interactions between two features and how their joint effects contribute to the model’s decision-making.
     - ALE Interaction Metrics: Numerical values representing the strength of interactions between feature pairs.
-    - Correlation Matrix: Shows the correlation between all feature pairs to understand underlying relationships.
     - Interaction Heatmap: Visual representation of interaction strengths for easy comparison.
-    - Top Interaction Scatter Plots: Scatter plots for the top N interacting feature pairs to provide deeper insights.
+    - Interaction Metrics CSV: Separated into 1D and 2D for better clarity.
     """
     try:
         # Create explanation directories
