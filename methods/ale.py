@@ -112,29 +112,6 @@ def load_models(model_paths):
         logger.error(f"Failed to load models: {e}")
         raise
 
-def generate_correlation_matrix(X_train, save_dir):
-    """
-    Generate and save a correlation matrix heatmap.
-
-    Args:
-        X_train (pd.DataFrame): Feature dataset.
-        save_dir (str): Directory to save the correlation matrix plot.
-    """
-    try:
-        logger.info("Generating correlation matrix...")
-        corr_matrix = X_train.corr()
-        plt.figure(figsize=(12, 10))
-        sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='coolwarm', square=True, cbar_kws={"shrink": .8})
-        plt.title("Feature Correlation Matrix", fontsize=16)
-        plt.tight_layout()
-        plot_path = os.path.join(save_dir, 'correlation_matrix.png')
-        plt.savefig(plot_path, dpi=DPI, bbox_inches='tight')
-        plt.close()
-        logger.info(f"Correlation matrix saved: {plot_path}")
-    except Exception as e:
-        logger.error(f"Failed to generate correlation matrix: {e}")
-        raise
-
 def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
     """
     Generate and save an interaction strength heatmap based on ALE interaction metrics.
@@ -290,9 +267,6 @@ def generate_ale_explanations(model, model_name, X_train, save_dirs, grid_size=G
 
     else:
         logger.warning("No ALE interaction metrics were computed.")
-
-    # Generate correlation matrix and save in Additional_Plots
-    generate_correlation_matrix(X_train, save_dirs['Additional_Plots'])
 
 def compute_and_save_ale_explanations(model, model_name, X_train, save_dirs):
     """
