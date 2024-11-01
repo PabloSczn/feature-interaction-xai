@@ -18,7 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-DATASET_NAME = 'friedman1'  # Change to 'friedman1' or 'bike-sharing' as needed
+DATASET_NAME = 'bike-sharing'  # Change to 'friedman1' or 'bike-sharing' as needed
 MODELS = ['xgb', 'rf']  # List of models to process
 OUTPUT_DIR = './comparison_results'  # Base directory to save the comparison results
 TOP_N = 10  # Number of top interactions to consider
@@ -269,9 +269,22 @@ def plot_heatmap(df, model_name, save_dir):
                 pivot_df = pivot_df.combine_first(pivot_df.T)
                 # Replace NaN with 0 for visualisation purposes
                 pivot_df_filled = pivot_df.fillna(0)
-                plt.figure(figsize=(10, 8))
-                sns.heatmap(pivot_df_filled, annot=True, fmt=".2f", cmap='viridis', square=True)
-                plt.title(f'{method} Interaction Heatmap for {model_name.upper()}')
+                
+                plt.figure(figsize=(14, 12))  # Increased figure size
+                sns.heatmap(
+                    pivot_df_filled, 
+                    annot=True, 
+                    fmt=".2f", 
+                    cmap='viridis', 
+                    square=True,
+                    annot_kws={"size": 8}  # Smaller annotation font size
+                )
+                plt.title(f'{method} Interaction Heatmap for {model_name.upper()}', fontsize=16)
+                
+                # Rotate x and y labels for better readability
+                plt.xticks(rotation=45, ha='right', fontsize=10)
+                plt.yticks(rotation=0, fontsize=10)
+                
                 plt.tight_layout()
                 output_path = os.path.join(save_dir, f'{model_name}_{method}_heatmap.png')
                 plt.savefig(output_path, dpi=300)
@@ -302,16 +315,22 @@ def plot_top_interactions(df, model_name, save_dir, top_n=TOP_N):
                     logger.warning(f"No data available to plot top {top_n} interactions for method '{method}'.")
                     continue
                 top_df['Feature_Pair'] = top_df['Feature1'] + ' & ' + top_df['Feature2']
-                plt.figure(figsize=(10, 6))
+                
+                plt.figure(figsize=(14, 10))  # Increased figure size
                 sns.barplot(
                     x=method,
                     y='Feature_Pair',
                     data=top_df,
                     palette='viridis'
                 )
-                plt.title(f'Top {top_n} Interactions by {method} for {model_name.upper()}')
-                plt.xlabel('Normalised Interaction Strength')
-                plt.ylabel('Feature Pair')
+                plt.title(f'Top {top_n} Interactions by {method} for {model_name.upper()}', fontsize=16)
+                plt.xlabel('Normalised Interaction Strength', fontsize=12)
+                plt.ylabel('Feature Pair', fontsize=12)
+                
+                # Rotate y-axis labels if they are too long
+                plt.yticks(rotation=0, fontsize=10)
+                plt.xticks(fontsize=10)
+                
                 plt.tight_layout()
                 output_path = os.path.join(save_dir, f'{model_name}_top_{top_n}_{method}_interactions.png')
                 plt.savefig(output_path, dpi=300)

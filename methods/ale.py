@@ -29,7 +29,7 @@ if DATASET_NAME == 'friedman1':
     MODEL_BASE_PATH = './models/friedman'
     EXPLANATIONS_DIR = './explanations/ale/friedman1'
 elif DATASET_NAME == 'bike-sharing':
-    DATA_PATH = './data/bike_sharing_processed.csv'  # Ensure this matches your processed data filename
+    DATA_PATH = './data/bike_sharing_processed.csv'
     MODEL_BASE_PATH = './models/bike-sharing'
     EXPLANATIONS_DIR = './explanations/ale/bike-sharing'
 else:
