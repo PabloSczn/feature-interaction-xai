@@ -12,7 +12,7 @@ import seaborn as sns
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,  # Changed to INFO for better visibility; adjust as needed
+    level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
@@ -193,7 +193,7 @@ def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
 
         # Pivot the DataFrame to create a matrix
         pivot_df = interaction_metrics_df_filtered.pivot(index='Feature 1', columns='Feature 2', values='ALE Interaction Strength')
-        # Sort the features for better visualization
+        # Sort the features for better visualisation
         pivot_df = pivot_df.sort_index().sort_index(axis=1)
         # Create a symmetric matrix by combining with its transpose
         pivot_df = pivot_df.combine_first(pivot_df.T)

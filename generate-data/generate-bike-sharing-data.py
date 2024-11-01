@@ -6,6 +6,7 @@ import pandas as pd
 """
 The data was taken from: http://archive.ics.uci.edu/dataset/275/bike+sharing+dataset
 The processing is inspired by the way that Christoph Molnar describes in 4.1 Bike Rentals (Regression) from his book: Interpretable Machine Learning
+(https://christophm.github.io/interpretable-ml-book/)
 """
 
 def get_project_root():
