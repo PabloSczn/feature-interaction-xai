@@ -158,6 +158,9 @@ def aggregate_interactions(shap_interactions, feature_names):
         # Create a DataFrame for easy manipulation
         interaction_df = pd.DataFrame(interaction_matrix, index=feature_names, columns=feature_names)
 
+        # Remove self-interactions by setting diagonal to NaN
+        np.fill_diagonal(interaction_matrix, np.nan)
+
         # Melt the DataFrame to have feature pairs and their interaction values
         interaction_df = interaction_df.reset_index().melt(id_vars='index', var_name='Feature_2', value_name='Interaction_Value')
         interaction_df.rename(columns={'index': 'Feature_1'}, inplace=True)
