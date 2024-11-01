@@ -54,7 +54,7 @@ def process_day_data(day_df):
     start_date = datetime(2011, 1, 1)
     day_df['days_since_2011_01_01'] = (day_df['dteday'] - start_date).dt.days
     
-    # Convert normalized 'temp', 'hum', and 'windspeed' to Celsius, percentage, and km/h
+    # Convert normalised 'temp', 'hum', and 'windspeed' to Celsius, percentage, and km/h
     day_df['temp_celsius'] = day_df['temp'] * 41
     day_df['humidity_percent'] = day_df['hum'] * 100
     day_df['windspeed_kmh'] = day_df['windspeed'] * 67

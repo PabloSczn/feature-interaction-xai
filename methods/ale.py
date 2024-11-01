@@ -12,7 +12,7 @@ import seaborn as sns
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.INFO,  # Changed to INFO for better visibility; adjust as needed
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
@@ -21,13 +21,27 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-DATASET_NAME = 'friedman1'
-DATA_PATH = './data/friedman_X_train.csv'
+DATASET_NAME = 'friedman1'  # Change to 'friedman1' or 'bike-sharing' as needed
+
+# Define paths based on the dataset name
+if DATASET_NAME == 'friedman1':
+    DATA_PATH = './data/friedman_X_train.csv'
+    MODEL_BASE_PATH = './models/friedman'
+    EXPLANATIONS_DIR = './explanations/ale/friedman1'
+elif DATASET_NAME == 'bike-sharing':
+    DATA_PATH = './data/bike_sharing_processed.csv'  # Ensure this matches your processed data filename
+    MODEL_BASE_PATH = './models/bike-sharing'
+    EXPLANATIONS_DIR = './explanations/ale/bike-sharing'
+else:
+    logger.error(f"Unsupported DATASET_NAME: {DATASET_NAME}. Supported datasets are 'friedman1' and 'bike-sharing'.")
+    sys.exit(1)
+
+# Define model paths based on the dataset
 MODEL_PATHS = {
-    'xgb': './models/xgb_model.pkl',
-    'rf': './models/rf_model.pkl'
+    'xgb': os.path.join(MODEL_BASE_PATH, 'xgb_model.pkl'),
+    'rf': os.path.join(MODEL_BASE_PATH, 'rf_model.pkl')
 }
-EXPLANATIONS_DIR = './explanations/ale'
+
 MODEL_NAMES = ['xgb', 'rf']
 GRID_SIZE = 50
 DPI = 700
@@ -63,28 +77,49 @@ def create_directories(base_dir, model_names):
 
 def load_data(data_path):
     """
-    Load the dataset from the specified CSV file.
+    Load the dataset from the specified CSV file and preprocess it based on the dataset name.
 
     Args:
         data_path (str): Path to the CSV file.
 
     Returns:
-        pd.DataFrame: Loaded feature dataset.
+        pd.DataFrame: Loaded and preprocessed feature dataset.
     """
     try:
         logger.info(f"Loading dataset from {data_path}...")
-        X_train = pd.read_csv(data_path)
-        logger.info(f"Dataset loaded with shape {X_train.shape}.")
-        return X_train
+        data = pd.read_csv(data_path)
+        logger.info(f"Dataset loaded with shape {data.shape}.")
+
+        if DATASET_NAME == 'bike-sharing':
+            logger.info("Preprocessing data for 'bike-sharing' dataset...")
+            # Drop the target variable
+            if 'total_count' in data.columns:
+                data = data.drop('total_count', axis=1)
+                logger.debug("'total_count' column dropped from features.")
+
+            # One-hot encode categorical features
+            categorical_features = ['season', 'weather_situation']
+            logger.info(f"Applying one-hot encoding to categorical features: {categorical_features}")
+            data = pd.get_dummies(data, columns=categorical_features, drop_first=True)
+            logger.info(f"One-hot encoding applied. New shape: {data.shape}")
+        elif DATASET_NAME == 'friedman1':
+            logger.info("No preprocessing required for 'friedman1' dataset.")
+            pass
+        else:
+            logger.error(f"Unsupported DATASET_NAME: {DATASET_NAME}.")
+            sys.exit(1)
+
+        logger.info(f"Preprocessed dataset shape: {data.shape}")
+        return data
     except FileNotFoundError:
         logger.error(f"Data file not found at {data_path}.")
-        raise
+        sys.exit(1)
     except pd.errors.EmptyDataError:
         logger.error(f"No data found in the file {data_path}.")
-        raise
+        sys.exit(1)
     except Exception as e:
-        logger.error(f"An error occurred while loading data: {e}")
-        raise
+        logger.error(f"An error occurred while loading or preprocessing data: {e}")
+        sys.exit(1)
 
 def load_models(model_paths):
     """
@@ -110,30 +145,30 @@ def load_models(model_paths):
         logger.error(f"Failed to load models: {e}")
         raise
 
-def format_axis_ticks(ax, feature, grid_size):
+def format_axis_ticks(ax, feature1=None, feature2=None):
     """
     Format the axis ticks for better readability.
 
     Args:
         ax (matplotlib.axes.Axes): The axes to format.
-        feature (str): The feature name.
-        grid_size (int): Number of grid points used in ALE.
+        feature1 (str, optional): The first feature name (for 2D plots).
+        feature2 (str, optional): The second feature name (for 2D plots).
 
     Returns:
         None
     """
     try:
-        # Get current tick positions
+        # Format x-axis ticks
         ticks = ax.get_xticks()
-
         tick_labels = [f"{tick:.2f}" for tick in ticks]
         ax.set_xticklabels(tick_labels, rotation=45, ha='right')
-        
+
+        # Format y-axis ticks
         ticks = ax.get_yticks()
         tick_labels = [f"{tick:.2f}" for tick in ticks]
         ax.set_yticklabels(tick_labels, rotation=0)
     except Exception as e:
-        logger.warning(f"Failed to format axis ticks for feature '{feature}': {e}")
+        logger.warning(f"Failed to format axis ticks: {e}")
 
 def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
     """
@@ -158,7 +193,7 @@ def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
 
         # Pivot the DataFrame to create a matrix
         pivot_df = interaction_metrics_df_filtered.pivot(index='Feature 1', columns='Feature 2', values='ALE Interaction Strength')
-        # Sort the features for better visualisation
+        # Sort the features for better visualization
         pivot_df = pivot_df.sort_index().sort_index(axis=1)
         # Create a symmetric matrix by combining with its transpose
         pivot_df = pivot_df.combine_first(pivot_df.T)
@@ -261,7 +296,7 @@ def generate_ale_explanations(model, model_name, X_train, save_dirs, grid_size=G
             ale_eff = ale(
                 X=X_train, model=model, feature=[feature], grid_size=grid_size, include_CI=True, C=0.95
             )
-            
+
             # Plot 1D ALE
             plt.figure(figsize=(8, 6), constrained_layout=True)
             ale_eff.plot()
@@ -303,7 +338,7 @@ def generate_ale_explanations(model, model_name, X_train, save_dirs, grid_size=G
             ale_eff = ale(
                 X=X_train, model=model, feature=[feature1, feature2], grid_size=grid_size, include_CI=True, C=0.95
             )
-            
+
             # Check if ale_eff is a DataFrame
             if isinstance(ale_eff, pd.DataFrame):
                 plt.figure(figsize=(10, 8), constrained_layout=True)

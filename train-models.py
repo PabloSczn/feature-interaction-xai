@@ -13,7 +13,7 @@ def train_models_on_friedman():
     y_train = pd.read_csv('data/friedman_y_train.csv').values.ravel()  # Flatten to a 1D array
     y_test = pd.read_csv('data/friedman_y_test.csv').values.ravel()  # Flatten to a 1D array
 
-    # Initialize models
+    # Initialise models
     xgb_model = XGBRegressor(n_estimators=100, max_depth=4, learning_rate=0.1, random_state=42)
     rf_model = RandomForestRegressor(n_estimators=100, max_depth=4, random_state=42)
 
@@ -70,7 +70,7 @@ def train_models_on_bike_sharing():
     # Split into train/test sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Initialize models
+    # Initialise models
     xgb_model = XGBRegressor(n_estimators=100, max_depth=4, learning_rate=0.1, random_state=42)
     rf_model = RandomForestRegressor(n_estimators=100, max_depth=4, random_state=42)
 
@@ -103,7 +103,7 @@ def train_models_on_bike_sharing():
     print(f"Bike Sharing - Random Forest - Train R²: {rf_train_r2}, Test R²: {rf_test_r2}")
 
     # Create models directory if it doesn't exist
-    models_dir = "models/bike_sharing"
+    models_dir = "models/bike-sharing"
     if not os.path.exists(models_dir):
         os.makedirs(models_dir)
 
