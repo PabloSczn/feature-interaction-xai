@@ -1,7 +1,6 @@
 import os
 import sys
 import logging
-from itertools import combinations
 
 import pandas as pd
 import numpy as np
@@ -9,7 +8,7 @@ import joblib
 import shap
 import matplotlib.pyplot as plt
 import seaborn as sns
-from tqdm import tqdm
+
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 
@@ -24,13 +23,27 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-DATASET_NAME = 'friedman1'
-DATA_PATH = './data/friedman_X_train.csv'
-MODEL_PATHS = {
-    'xgb': './models/xgb_model.pkl',
-    'rf': './models/rf_model.pkl'
-}
-EXPLANATIONS_DIR = "explanations/shap-interaction"
+DATASET_NAME = 'friedman1'  # Change to 'friedman1' or 'bike-sharing' as needed
+
+# Dynamic path configurations based on DATASET_NAME
+if DATASET_NAME == 'friedman1':
+    DATA_PATH = './data/friedman_X_train.csv'
+    MODEL_PATHS = {
+        'xgb': './models/friedman/xgb_model.pkl',
+        'rf': './models/friedman/rf_model.pkl'
+    }
+    EXPLANATIONS_DIR = "explanations/shap-interaction/friedman1"
+elif DATASET_NAME == 'bike-sharing':
+    DATA_PATH = './data/bike_sharing_processed.csv'
+    MODEL_PATHS = {
+        'xgb': './models/bike-sharing/xgb_model.pkl',
+        'rf': './models/bike-sharing/rf_model.pkl'
+    }
+    EXPLANATIONS_DIR = "explanations/shap-interaction/bike-sharing"
+else:
+    logger.error(f"Unsupported DATASET_NAME: {DATASET_NAME}. Choose 'friedman1' or 'bike-sharing'.")
+    sys.exit(1)
+
 MODEL_NAMES = ['xgb', 'rf']
 TOP_N_INTERACTIONS = 10
 
@@ -83,6 +96,24 @@ def load_data(data_path):
         logger.error(f"An error occurred while loading data: {e}")
         raise
 
+def preprocess_data(X, dataset_name):
+    """
+    Preprocess the data by applying necessary transformations.
+
+    Args:
+        X (pd.DataFrame): Raw feature dataset.
+        dataset_name (str): Name of the dataset ('friedman1' or 'bike-sharing').
+
+    Returns:
+        pd.DataFrame: Preprocessed feature dataset.
+    """
+    if dataset_name == 'bike-sharing':
+        logger.info("Applying one-hot encoding to categorical features: 'season' and 'weather_situation'.")
+        categorical_features = ['season', 'weather_situation']
+        X = pd.get_dummies(X, columns=categorical_features, drop_first=True)
+        logger.info(f"One-hot encoding applied. New shape: {X.shape}")
+    return X
+
 def load_models(model_paths):
     """
     Load pre-trained models from the specified paths.
@@ -106,6 +137,29 @@ def load_models(model_paths):
     except Exception as e:
         logger.error(f"Failed to load models: {e}")
         raise
+
+def get_model_features(model, model_name):
+    """
+    Get the feature names expected by the model.
+
+    Args:
+        model: Trained model.
+        model_name (str): 'xgb' or 'rf'
+
+    Returns:
+        list: Feature names expected by the model.
+    """
+    if model_name == 'xgb':
+        return model.get_booster().feature_names
+    elif model_name == 'rf':
+        if hasattr(model, 'feature_names_in_'):
+            return list(model.feature_names_in_)
+        else:
+            logger.error(f"Random Forest model '{model_name}' does not have 'feature_names_in_' attribute.")
+            raise AttributeError("Model does not have 'feature_names_in_'")
+    else:
+        logger.error(f"Unsupported model type: {model_name}")
+        raise ValueError("Unsupported model type")
 
 def compute_shap_interactions(model, X):
     """
@@ -191,7 +245,7 @@ def save_interaction_explanations(model_name, interaction_df, interaction_matrix
     """
     try:
         logger.info(f"Saving SHAP interaction explanations for model '{model_name.upper()}'...")
-        
+
         # Save the aggregated interactions as CSV
         csv_path = os.path.join(output_dir, f"{model_name}_shap_interaction_values.csv")
         interaction_df.to_csv(csv_path, index=False)
@@ -208,7 +262,7 @@ def save_interaction_explanations(model_name, interaction_df, interaction_matrix
         plt.figure(figsize=(12, 10))
         sns.heatmap(interaction_matrix, xticklabels=feature_names, yticklabels=feature_names, 
                     cmap='viridis', annot=False, fmt=".2f")
-        plt.title(f"SHAP Interaction Values Heatmap for {model_name.upper()}")
+        plt.title(f"SHAP Interaction Values Heatmap for {model_name.upper()} ({DATASET_NAME})")
         plt.tight_layout()
         heatmap_path = os.path.join(output_dir, f"{model_name}_shap_interactions_heatmap.png")
         plt.savefig(heatmap_path, dpi=300)
@@ -219,7 +273,7 @@ def save_interaction_explanations(model_name, interaction_df, interaction_matrix
         logger.error(f"Failed to save SHAP interaction explanations for model '{model_name}': {e}")
         raise
 
-def compute_and_save_shap_interactions(model, model_name, X_train, feature_names, save_dir):
+def compute_and_save_shap_interactions(model, model_name, X_train, feature_names, save_dir, dataset_name):
     """
     Compute and save SHAP interaction explanations for a given model.
 
@@ -229,18 +283,30 @@ def compute_and_save_shap_interactions(model, model_name, X_train, feature_names
         X_train (pd.DataFrame): Training feature dataset.
         feature_names (list): List of feature names.
         save_dir (str): Directory to save the explanations.
+        dataset_name (str): Name of the dataset.
     """
     try:
         logger.info(f"Processing SHAP interaction values for model '{model_name.upper()}'...")
 
+        # Get model's expected feature names
+        model_features = get_model_features(model, model_name)
+
+        # Align X_train to model's feature names
+        X_train_aligned = X_train.reindex(columns=model_features, fill_value=0)
+
+        # Verify alignment
+        if X_train_aligned.shape[1] != len(model_features):
+            logger.error("Mismatch in the number of features after alignment.")
+            raise ValueError("Feature alignment failed.")
+
         # Compute SHAP interaction values
-        shap_interactions = compute_shap_interactions(model, X_train)
+        shap_interactions = compute_shap_interactions(model, X_train_aligned)
 
         # Aggregate interactions
-        interaction_df, interaction_matrix = aggregate_interactions(shap_interactions, feature_names)
+        interaction_df, interaction_matrix = aggregate_interactions(shap_interactions, model_features)
 
         # Save explanations
-        save_interaction_explanations(model_name, interaction_df, interaction_matrix, save_dir, feature_names)
+        save_interaction_explanations(model_name, interaction_df, interaction_matrix, save_dir, model_features)
 
         logger.info(f"SHAP interaction explanations for model '{model_name.upper()}' have been saved successfully.")
     except Exception as e:
@@ -252,7 +318,7 @@ def main():
     Main function to orchestrate the computation of SHAP interaction values for all models.
     """
     try:
-        logger.info("Starting SHAP interaction values computation...")
+        logger.info(f"Starting SHAP interaction values computation for dataset '{DATASET_NAME}'...")
 
         # Create explanation directories
         directories = create_directories(EXPLANATIONS_DIR, MODEL_NAMES)
@@ -260,13 +326,19 @@ def main():
         # Load data
         X_train, feature_names = load_data(DATA_PATH)
 
+        # Preprocess data if necessary
+        X_train = preprocess_data(X_train, DATASET_NAME)
+
+        # Update feature names after preprocessing
+        feature_names = X_train.columns.tolist()
+
         # Load models
         models = load_models(MODEL_PATHS)
 
         # Compute and save SHAP interaction explanations for each model
         for model_name, model in models.items():
             save_dir = directories[model_name]
-            compute_and_save_shap_interactions(model, model_name, X_train, feature_names, save_dir)
+            compute_and_save_shap_interactions(model, model_name, X_train, feature_names, save_dir, DATASET_NAME)
 
         logger.info("All SHAP interaction explanations have been computed and saved successfully.")
 
