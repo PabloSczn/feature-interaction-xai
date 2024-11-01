@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-DATASET_NAME = 'bike-sharing'  # Change to 'friedman1' or 'bike-sharing' as needed
+DATASET_NAME = 'friedman1'  # Change to 'friedman1' or 'bike-sharing' as needed
 
 # Define paths based on the dataset name
 if DATASET_NAME == 'friedman1':
@@ -201,7 +201,7 @@ def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
         for feature in pivot_df.index:
             pivot_df.at[feature, feature] = np.nan
 
-        # Optional: Shorten feature names for readability
+        # Shorten feature names for readability
         # Define a mapping from long feature names to shorter aliases
         feature_aliases = {
             'weather_situation_mist + cloudy, mist + broken clouds, mist + few clouds, mist': 'weather_mist_cloudy',

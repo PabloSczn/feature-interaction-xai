@@ -20,16 +20,52 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Constants
-DATASET_NAME = 'friedman1'
-DATA_PATH = './data/friedman_X_train.csv'
-MODEL_PATHS = {
-    'xgb': './models/xgb_model.pkl',
-    'rf': './models/rf_model.pkl'
-}
-EXPLANATIONS_DIR = "explanations/h-statistic"
-MODEL_NAMES = ['xgb', 'rf']
+
+# Configuration Parameters
+DATASET_NAME = 'friedman1'  # Set the dataset name: 'friedman1' or 'bike-sharing'
+
+# Base paths
+BASE_DATA_PATH = './data'
+BASE_MODEL_PATH = './models'
+BASE_EXPLANATIONS_DIR = "explanations/h-statistic"
+
+# Sample size for H-statistic computation
 SAMPLE_SIZE = 500
+
+# Models to process
+MODEL_NAMES = ['xgb', 'rf']
+
+
+# Dynamic Configuration
+if DATASET_NAME == 'friedman1':
+    DATA_PATH = os.path.join(BASE_DATA_PATH, 'friedman_X_train.csv')
+    MODEL_PATHS = {
+        'xgb': os.path.join(BASE_MODEL_PATH, 'friedman', 'xgb_model.pkl'),
+        'rf': os.path.join(BASE_MODEL_PATH, 'friedman', 'rf_model.pkl')
+    }
+    # Explanations will be saved in explanations/h-statistic/friedman1/xgb and .../rf
+    EXPLANATIONS_DIR = os.path.join(BASE_EXPLANATIONS_DIR, 'friedman1')
+    # Relevant features are the first 5 columns for Friedman1
+    def get_relevant_features(X_train):
+        return X_train.columns[:5].tolist()
+        
+elif DATASET_NAME == 'bike-sharing':
+    DATA_PATH = os.path.join(BASE_DATA_PATH, 'bike_sharing_processed.csv')
+    MODEL_PATHS = {
+        'xgb': os.path.join(BASE_MODEL_PATH, 'bike-sharing', 'xgb_model.pkl'),
+        'rf': os.path.join(BASE_MODEL_PATH, 'bike-sharing', 'rf_model.pkl')
+    }
+    # Explanations will be saved in explanations/h-statistic/bike-sharing/xgb and .../rf
+    EXPLANATIONS_DIR = os.path.join(BASE_EXPLANATIONS_DIR, 'bike-sharing')
+    # Relevant features are all columns for bike-sharing after encoding, excluding 'total_count'
+    def get_relevant_features(X_train):
+        # Exclude 'total_count' if it exists
+        if 'total_count' in X_train.columns:
+            return [col for col in X_train.columns if col != 'total_count']
+        return X_train.columns.tolist()
+else:
+    logger.error(f"Unsupported DATASET_NAME: {DATASET_NAME}. Please choose 'friedman1' or 'bike-sharing'.")
+    sys.exit(1)
 
 def create_directories(base_dir, model_names):
     """
@@ -68,6 +104,23 @@ def load_data(data_path):
         logger.info(f"Loading dataset from {data_path}...")
         X_train = pd.read_csv(data_path)
         logger.info(f"Dataset loaded with shape {X_train.shape}.")
+        
+        # Apply preprocessing if dataset is 'bike-sharing'
+        if DATASET_NAME == 'bike-sharing':
+            logger.info("Applying one-hot encoding to categorical features...")
+            # Check if 'season' and 'weather_situation' exist before encoding
+            if 'season' in X_train.columns and 'weather_situation' in X_train.columns:
+                X_train = pd.get_dummies(X_train, columns=['season', 'weather_situation'], drop_first=True)
+                logger.info(f"After encoding, dataset shape is {X_train.shape}.")
+            else:
+                logger.warning("'season' and/or 'weather_situation' columns not found. Skipping one-hot encoding.")
+        
+        # For 'bike-sharing', drop 'total_count' if it exists
+        if DATASET_NAME == 'bike-sharing' and 'total_count' in X_train.columns:
+            logger.info("Dropping 'total_count' from feature set.")
+            X_train = X_train.drop('total_count', axis=1)
+            logger.info(f"After dropping, dataset shape is {X_train.shape}.")
+        
         return X_train
     except FileNotFoundError:
         logger.error(f"Data file not found at {data_path}.")
@@ -242,7 +295,7 @@ def save_h_statistics(pairwise_h, total_h, save_dir):
         logger.error(f"Failed to save H-statistics: {e}")
         raise
 
-def compute_and_save_h_statistics(model, model_name, X_train, save_dir):
+def compute_and_save_h_statistics(model, model_name, X_train, save_dir, relevant_features):
     """
     Compute and save both pairwise and total H-statistics for a given model.
 
@@ -251,14 +304,9 @@ def compute_and_save_h_statistics(model, model_name, X_train, save_dir):
         model_name (str): Name of the model.
         X_train (pd.DataFrame): Feature dataset.
         save_dir (str): Directory to save the H-statistics.
+        relevant_features (list): List of relevant feature names.
     """
     logger.info(f"Processing model: {model_name.upper()}")
-
-    # Determine relevant features
-    if DATASET_NAME == 'friedman1':
-        relevant_features = X_train.columns[:5].tolist()
-    else:
-        relevant_features = X_train.columns.tolist()
 
     pairwise_H = {}
     total_H = {}
@@ -296,10 +344,13 @@ def main():
         X_train = load_data(DATA_PATH)
         models = load_models(MODEL_PATHS)
 
+        # Determine relevant features based on dataset
+        relevant_features = get_relevant_features(X_train)
+
         # Compute and save H-statistics for each model
         for model_name, model in models.items():
             save_dir = directories[model_name]
-            compute_and_save_h_statistics(model, model_name, X_train, save_dir)
+            compute_and_save_h_statistics(model, model_name, X_train, save_dir, relevant_features)
 
         logger.info("All H-statistics have been computed and saved successfully.")
 
