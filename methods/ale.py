@@ -204,8 +204,8 @@ def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
         # Shorten feature names for readability
         # Define a mapping from long feature names to shorter aliases
         feature_aliases = {
-            'weather_situation_mist + cloudy, mist + broken clouds, mist + few clouds, mist': 'weather_mist_cloudy',
-            'weather_situation_light snow, light rain + thunderstorm + scattered clouds, light rain + scattered clouds': 'weather_light_snow_rain',
+            'weather_situation_mist + cloudy, mist + broken clouds, mist + few clouds, mist': 'weather_mist_cloudy+few_broken_clouds',
+            'weather_situation_light snow, light rain + thunderstorm + scattered clouds, light rain + scattered clouds': 'weather_light_snow_rain+thunderstorm+scatteredclouds',
         }
 
         # Apply the mapping to the pivot DataFrame

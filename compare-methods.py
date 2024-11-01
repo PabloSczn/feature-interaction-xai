@@ -23,6 +23,12 @@ MODELS = ['xgb', 'rf']  # List of models to process
 OUTPUT_DIR = './comparison_results'  # Base directory to save the comparison results
 TOP_N = 10  # Number of top interactions to consider
 
+# Feature Aliases for readability in plots and reports
+FEATURE_ALIASES = {
+    'weather_situation_mist + cloudy, mist + broken clouds, mist + few clouds, mist': 'weather_mist_cloudy+few_broken_clouds',
+    'weather_situation_light snow, light rain + thunderstorm + scattered clouds, light rain + scattered clouds': 'weather_light_snow_rain+thunderstorm+scatteredclouds',
+}
+
 def create_output_directories(base_dir, dataset_name, models):
     """
     Create directories for saving comparison results for each model within the dataset.
@@ -154,6 +160,13 @@ def merge_interactions(ale_df, hstat_df, shap_df):
             else:
                 merged_df = pd.merge(merged_df, shap_df, on=['Feature1', 'Feature2'], how='outer')
         logger.info("Interaction data merged successfully.")
+        
+        # Apply feature aliases if the dataset is 'bike-sharing'
+        if DATASET_NAME == 'bike-sharing':
+            merged_df['Feature1'] = merged_df['Feature1'].replace(FEATURE_ALIASES)
+            merged_df['Feature2'] = merged_df['Feature2'].replace(FEATURE_ALIASES)
+            logger.info("Feature aliases applied for 'bike-sharing' dataset.")
+        
         return merged_df
     except Exception as e:
         logger.error(f"Failed to merge interaction data: {e}")
