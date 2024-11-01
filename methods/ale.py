@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-DATASET_NAME = 'friedman1'  # Change to 'friedman1' or 'bike-sharing' as needed
+DATASET_NAME = 'bike-sharing'  # Change to 'friedman1' or 'bike-sharing' as needed
 
 # Define paths based on the dataset name
 if DATASET_NAME == 'friedman1':
@@ -200,10 +200,34 @@ def generate_interaction_heatmap(interaction_metrics_df, save_dir, model_name):
         # Replace diagonal with NaN to avoid self-interaction
         for feature in pivot_df.index:
             pivot_df.at[feature, feature] = np.nan
-        plt.figure(figsize=(12, 10))
-        sns.heatmap(pivot_df, annot=True, fmt=".4f", cmap='viridis', square=True, cbar_kws={"shrink": .8})
+
+        # Optional: Shorten feature names for readability
+        # Define a mapping from long feature names to shorter aliases
+        feature_aliases = {
+            'weather_situation_mist + cloudy, mist + broken clouds, mist + few clouds, mist': 'weather_mist_cloudy',
+            'weather_situation_light snow, light rain + thunderstorm + scattered clouds, light rain + scattered clouds': 'weather_light_snow_rain',
+        }
+
+        # Apply the mapping to the pivot DataFrame
+        pivot_df.rename(index=feature_aliases, columns=feature_aliases, inplace=True)
+
+        plt.figure(figsize=(20, 18))  # Increased figure size for better readability
+        sns.heatmap(
+            pivot_df,
+            annot=True,
+            fmt=".4f",
+            cmap='viridis',
+            square=True,
+            cbar_kws={"shrink": .8},
+            annot_kws={"size": 8},  # Smaller annotation font size
+            linewidths=.5,  # Add lines between cells for clarity
+            linecolor='grey'
+        )
         plt.title(f"ALE Interaction Strength Heatmap for {model_name.upper()}", fontsize=16)
+        plt.xticks(rotation=90, fontsize=10)  # Rotate x-axis labels vertically
+        plt.yticks(rotation=0, fontsize=10)   # Keep y-axis labels horizontal
         plt.tight_layout()
+
         plot_path = os.path.join(save_dir, f'ale_interaction_heatmap_{model_name}.png')
         plt.savefig(plot_path, dpi=DPI, bbox_inches='tight')
         plt.close()
