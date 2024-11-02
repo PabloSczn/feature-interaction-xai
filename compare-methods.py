@@ -145,6 +145,21 @@ def merge_interactions(ale_df, hstat_df, shap_df):
                 hstat_df['Hstat'] = hstat_df['Hstat'].str.rstrip('%').astype(float)
         if not shap_df.empty:
             shap_df = shap_df.rename(columns={'Feature_1': 'Feature1', 'Feature_2': 'Feature2', 'Interaction_Value': 'SHAP'})
+        # Apply feature aliases first
+        if DATASET_NAME == 'bike-sharing':
+            for df in [ale_df, hstat_df, shap_df]:
+                if not df.empty:
+                    df['Feature1'] = df['Feature1'].replace(FEATURE_ALIASES)
+                    df['Feature2'] = df['Feature2'].replace(FEATURE_ALIASES)
+            logger.info("Feature aliases applied for 'bike-sharing' dataset.")
+
+        # Sort feature pairs to ensure consistent ordering
+        for df in [ale_df, hstat_df, shap_df]:
+            if not df.empty:
+                df[['Feature1', 'Feature2']] = df[['Feature1', 'Feature2']].apply(
+                    lambda row: sorted([row['Feature1'], row['Feature2']]), axis=1, result_type='expand'
+                )
+
         # Merge the DataFrames
         merged_df = pd.DataFrame()
         if not ale_df.empty:
@@ -159,14 +174,8 @@ def merge_interactions(ale_df, hstat_df, shap_df):
                 merged_df = shap_df.copy()
             else:
                 merged_df = pd.merge(merged_df, shap_df, on=['Feature1', 'Feature2'], how='outer')
+
         logger.info("Interaction data merged successfully.")
-        
-        # Apply feature aliases if the dataset is 'bike-sharing'
-        if DATASET_NAME == 'bike-sharing':
-            merged_df['Feature1'] = merged_df['Feature1'].replace(FEATURE_ALIASES)
-            merged_df['Feature2'] = merged_df['Feature2'].replace(FEATURE_ALIASES)
-            logger.info("Feature aliases applied for 'bike-sharing' dataset.")
-        
         return merged_df
     except Exception as e:
         logger.error(f"Failed to merge interaction data: {e}")
