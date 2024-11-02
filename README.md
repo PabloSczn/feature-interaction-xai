@@ -60,7 +60,8 @@ Currently, the project includes:
    python methods/h-statistic.py
    python methods/shap-interaction.py
    ```
-   The generated explanations will be saved for later comparison in `explanations/`.
+   - To generate the explanations for both dataset, you need to change `DATASET_NAME` to either `friedman1` or `bike-sharing`
+   - The generated explanations will be saved for later comparison in `explanations/`.
 
 ## Author
 **Pablo Sanchez Narro**  
