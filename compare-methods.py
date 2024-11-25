@@ -361,39 +361,6 @@ def plot_top_interactions(df, model_name, save_dir, top_n=TOP_N):
     except Exception as e:
         logger.error(f"Failed to plot top interactions for model '{model_name}': {e}")
 
-def plot_scatter_comparison(df, model_name, save_dir):
-    """
-    Plot scatter plots comparing normalised interaction strengths between methods.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing interpreted interactions.
-        model_name (str): Name of the model.
-        save_dir (str): Directory to save the plots.
-
-    Returns:
-        None
-    """
-    try:
-        method_pairs = [('ALE_norm', 'Hstat_norm'), ('ALE_norm', 'SHAP_norm'), ('Hstat_norm', 'SHAP_norm')]
-        for method_x, method_y in method_pairs:
-            if method_x in df.columns and method_y in df.columns:
-                scatter_df = df.dropna(subset=[method_x, method_y])
-                if scatter_df.empty:
-                    logger.warning(f"No overlapping data to plot '{method_x}' vs '{method_y}' for model '{model_name}'.")
-                    continue
-                plt.figure(figsize=(8, 6))
-                sns.scatterplot(x=method_x, y=method_y, data=scatter_df)
-                plt.title(f'{method_x} vs {method_y} for {model_name.upper()}')
-                plt.xlabel(method_x)
-                plt.ylabel(method_y)
-                plt.tight_layout()
-                output_path = os.path.join(save_dir, f'{model_name}_{method_x}_vs_{method_y}.png')
-                plt.savefig(output_path, dpi=300)
-                plt.close()
-                logger.info(f"Scatter plot saved at '{output_path}'.")
-    except Exception as e:
-        logger.error(f"Failed to plot scatter comparisons for model '{model_name}': {e}")
-
 def generate_report(df, model_name, save_dir):
     """
     Generate a textual report interpreting the interactions.
@@ -475,7 +442,6 @@ def main():
             # Generate visualisations
             plot_heatmap(merged_df, model, output_dirs[model])
             plot_top_interactions(merged_df, model, output_dirs[model], TOP_N)
-            plot_scatter_comparison(merged_df, model, output_dirs[model])
 
             # Generate textual report
             generate_report(merged_df, model, output_dirs[model])
