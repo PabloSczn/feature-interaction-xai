@@ -5,8 +5,6 @@
 This project aims to compare different Explainable AI (XAI) methods to assess how well they capture and explain **feature interactions** in machine learning models. The goal is to better understand the influence of individual features and their interactions in model decision-making.  
 The project implements the **Accumulated Local Effects (ALE)**, **H-statistic**, and **SHAP interaction** methods, with plans to include other methods in the future.
 
-### 🚧 Please note this project is in progress 🚧
-
 Currently, the project includes:
 - **Friedman #1** dataset generation for non-linear feature interaction simulation, with plans to implement the integration of another dataset that reflects a real-life scenario.
 - **Bike Sharing** dataset generation. The data was made openly available by Capital-Bikeshare. Fanaee-T and Gama (2013) added weather data and seasonal information. The aim is to predict how many bikes will be rented depending on the weather and day.
@@ -62,6 +60,14 @@ Currently, the project includes:
    ```
    - To generate the explanations for both dataset, you need to change `DATASET_NAME` to either `friedman1` or `bike-sharing`
    - The generated explanations will be saved for later comparison in `explanations/`.
+
+4. **Compare explanations**:
+   After generating the explanations, you can run the script to normalise and compare the explanations:
+   ```bash
+   python compare-methods.py
+   ```
+   - You need to change `DATASET_NAME` to either `friedman1` or `bike-sharing`
+   - The generated comparisons will be saved in `comparison_results/`.
 
 ## Author
 **Pablo Sanchez Narro**  
